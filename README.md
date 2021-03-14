@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-# h5_tracking
-=======
 # tracking
 
 ## Project setup
@@ -20,4 +17,3 @@ yarn build
 
 ### Customize configuration
 See [Configuration Reference](https://cli.vuejs.org/config/).
->>>>>>> d5ebb50239664ecacf19759f10d89bb9879cecbd

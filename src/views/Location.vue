@@ -88,7 +88,7 @@ export default {
   },
   created(){    
     window.getDataCallback = this.getDataCallback.bind(this);
-    // this.getLocationData()
+    this.getLocationData()
   },
   methods: {
     toPlayBack(){

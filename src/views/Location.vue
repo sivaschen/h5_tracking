@@ -85,12 +85,19 @@ export default {
     //添加控件
     var ctrl = new T.Control.MapType();
     this.map.addControl(ctrl);
-    this.getLocationData()
+    // this.getLocationData()
     this.addMarkers();
     this.getAddress()
+
+    //测试代码
+    // setInterval(()=>{
+    //   this.deviceList[0].lat += 0.01
+    //   this.updateMarkers()
+    // }, 5000)
   },
   created(){    
     window.getDataCallback = this.getDataCallback.bind(this);    
+    
   },
   beforeDestroy(){
     window.getDataCallback = null;
@@ -100,7 +107,7 @@ export default {
       window.native.call(JSON.stringify({
         cmd: "timeSelection",
         param: {
-          "imei": this.currentDevice.imei
+          "imei": String(this.currentDevice.imei)
         },
         callback: ""
       }))
@@ -150,11 +157,31 @@ export default {
         if(this.firstLoad){
           this.map.centerAndZoom(new T.LngLat(this.currentDevice.lng, this.currentDevice.lat), 11);
           this.addMarkers();
+        } else {
+          this.updateMarkers()
         }
       } else {
         console.error('获取数据失败')
       }
       setTimeout(this.getLocationData, 3000);
+    },
+    updateMarkers(){
+      let deviceList = this.deviceList.slice(0);
+      let obj = {};
+      for (let j = 0; j < deviceList.length; j++) {
+        obj[deviceList[j].imei] = deviceList[j];
+      }
+      for (let i = 0; i < this.markers.length; i++) {
+        let marker = this.markers[i];
+        let imei = marker.imei;
+        let lngLat = marker.getLngLat();
+        if(lngLat.lat != obj[imei].lat || lngLat.lng != obj[imei].lng) {
+          marker.setLngLat(new T.LngLat(obj[imei].lng, obj[imei].lat))
+        }
+        if(marker.infowindow.getContent()!=obj[imei].name){
+          marker.infowindow.setContent(obj[imei].name)
+        }
+      }
     },
     getAddress(){
       const url = encodeURI("http://api.tianditu.gov.cn/geocoder?postStr={'lon': " +this.currentDevice.lng+ ",'lat':"+this.currentDevice.lat+",'ver':1}&type=geocode&tk=02c77be419309f75163b54b1d6109427")
@@ -190,6 +217,7 @@ export default {
         this.markers.push(marker);
         marker.infowindow = infoWin;
         marker.index = i;
+        marker.imei = item.imei;
         marker.addEventListener("click", function () {
           let info = this.infowindow;
           this.openInfoWindow(info);
@@ -202,8 +230,6 @@ export default {
       }
     },
     openInfowidow({ target, extData }) {
-      console.log(target)
-      console.log(extData)
       this.infowindow = {
         target,
         content: `<span>${extData}</span>`

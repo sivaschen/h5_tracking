@@ -16,7 +16,7 @@
       <hr>
       <div class="nameAndAddress">
         <p class="name">{{currentDevice.name}}</p>
-        <p class="address">{{currentDevice.address}}</p>
+        <p class="address">{{address}}</p>
       </div>
     </div>
   </div>
@@ -28,6 +28,7 @@ import imgUrl from './../assets/car.png'
 export default {
   data() {
     return {
+      address: "",
       firstLoad:true,
       center: [113.280637, 23.125178],
       zoom: 11,
@@ -70,7 +71,7 @@ export default {
         lat:23.125178,
         speed: 12,
         name:114,
-        address: "北京市西城区西什库大街31号院20号楼asdfasdfasdfasdfasdfasdfasdf"
+        address: ""
       },
       infowindow: {
         content: "",
@@ -88,7 +89,11 @@ export default {
   },
   created(){    
     window.getDataCallback = this.getDataCallback.bind(this);
-    this.getLocationData()
+    // this.getLocationData()
+    this.getAddress()
+  },
+  beforeDestroy(){
+    window.getDataCallback = null;
   },
   methods: {
     toPlayBack(){
@@ -100,10 +105,11 @@ export default {
       } else {
         this.currentIndex = this.deviceList.length -1;
       };
-      this.currentDevice = this.deviceList[this.currentIndex]
+      this.currentDevice = this.deviceList[this.currentIndex];
+      this.getAddress()
       this.map.centerAndZoom(new T.LngLat(this.currentDevice.lng, this.currentDevice.lat), 11);
-      this.currentMarker = this.markers[this.currentIndex]
-      this.currentMarker.openInfoWindow(this.currentMarker.infowindow)
+      this.currentMarker = this.markers[this.currentIndex];
+      this.currentMarker.openInfoWindow(this.currentMarker.infowindow);
     },
     nextDevice(){
       if(this.currentIndex == (this.deviceList.length -1)) {
@@ -112,6 +118,8 @@ export default {
         this.currentIndex++;
       };
       this.currentDevice = this.deviceList[this.currentIndex];
+      this.getAddress();
+      
       this.map.centerAndZoom(new T.LngLat(this.currentDevice.lng, this.currentDevice.lat), 11);
       this.currentMarker = this.markers[this.currentIndex]
       this.currentMarker.openInfoWindow(this.currentMarker.infowindow)
@@ -131,6 +139,7 @@ export default {
       if(data.errcode == 0) {
         this.deviceList = data.data;
         this.currentDevice = this.deviceList[this.currentIndex];
+        this.getAddress();
         if(this.firstLoad){
           this.map.centerAndZoom(new T.LngLat(this.currentDevice.lng, this.currentDevice.lat), 11);
           this.addMarkers();
@@ -140,7 +149,20 @@ export default {
       }
       setTimeout(this.getLocationData, 3000);
     },
+    getAddress(){
+      const url = encodeURI("http://api.tianditu.gov.cn/geocoder?postStr={'lon': " +this.currentDevice.lng+ ",'lat':"+this.currentDevice.lat+",'ver':1}&type=geocode&tk=02c77be419309f75163b54b1d6109427")
+      this.$axios({
+        method: 'get',
+        url})
+      .then((response) => {
+        this.address = response.data.result.formatted_address
+      })
+      .catch(function (error) {
+        console.log(error);
+      });
+    },
     addMarkers(){        
+      const _that = this;
       for (let i = 0; i < this.deviceList.length; i++) {
         let item = this.deviceList[i];
         var lnglat = new T.LngLat(item.lng, item.lat);
@@ -160,9 +182,12 @@ export default {
         var marker = new T.Marker(lnglat, {icon:icon});
         this.markers.push(marker);
         marker.infowindow = infoWin;
+        marker.index = i;
         marker.addEventListener("click", function () {
           let info = this.infowindow;
           this.openInfoWindow(info);
+          _that.currentDevice = _that.deviceList[this.index];
+          _that.getAddress()
         });
         //向地图上添加标注
         this.map.addOverLay(marker);

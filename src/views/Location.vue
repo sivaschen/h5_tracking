@@ -87,18 +87,24 @@ export default {
     this.map.addControl(ctrl);
     this.getLocationData()
     this.addMarkers();
+    this.getAddress()
   },
   created(){    
-    window.getDataCallback = this.getDataCallback.bind(this);
-    
-    this.getAddress()
+    window.getDataCallback = this.getDataCallback.bind(this);    
   },
   beforeDestroy(){
     window.getDataCallback = null;
   },
   methods: {
     toPlayBack(){
-      this.$router.push({name:"Playback"})
+      window.native.call(JSON.stringify({
+        cmd: "timeSelectioin",
+        param: {
+          "imei": this.currentDevice.imei
+        },
+        callback: ""
+      }))
+      // this.$router.push({name:"Playback"})
     },
     lastDevice(){
       if(this.currentIndex) {

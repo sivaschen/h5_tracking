@@ -85,11 +85,12 @@ export default {
     //添加控件
     var ctrl = new T.Control.MapType();
     this.map.addControl(ctrl);
+    this.getLocationData()
     this.addMarkers();
   },
   created(){    
     window.getDataCallback = this.getDataCallback.bind(this);
-    // this.getLocationData()
+    
     this.getAddress()
   },
   beforeDestroy(){

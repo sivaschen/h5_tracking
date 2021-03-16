@@ -98,7 +98,7 @@ export default {
   methods: {
     toPlayBack(){
       window.native.call(JSON.stringify({
-        cmd: "timeSelectioin",
+        cmd: "timeSelection",
         param: {
           "imei": this.currentDevice.imei
         },

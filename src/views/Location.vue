@@ -11,8 +11,8 @@
         <span class="time">{{currentDevice.speed > 0 ? (String(currentDevice.speed) + "km/h") : " "}}</span>
         <span class="separator">|</span>
         <span class="locatingType">北斗GPS</span>
-        <span class="toDeviceDetail" @click="toDeviceDetail">详情</span>
         <span class="toPlayback" @click="toPlayBack">回放</span>
+        <span class="toDeviceDetail" @click="toDeviceDetail">详情</span>
       </div>
       <hr>
       <div class="nameAndAddress">
@@ -178,7 +178,6 @@ export default {
     },
     getDataCallback(data){
       let myData = JSON.parse(data)
-      console.log(myData.errcode)
       if(myData.errcode == 0) {
         this.deviceList = myData.data;
         let currentIMEI = this.currentDevice.imei
@@ -225,7 +224,9 @@ export default {
         let imei = marker.imei;
         let lngLat = marker.getLngLat();
         if(lngLat.lat != obj[imei].lat || lngLat.lng != obj[imei].lng) {
-          marker.setLngLat(new T.LngLat(obj[imei].lng, obj[imei].lat))
+          let lngLat = new T.LngLat(obj[imei].lng, obj[imei].lat)
+          marker.setLngLat(lngLat);
+          marker.infowindow.setLngLat(lngLat);
         }
         console.log("update maker");
 
@@ -332,6 +333,7 @@ export default {
     }
     .toDeviceDetail {
       margin-right: 10px;
+      float: right;
       color: rgb(44, 117, 167);
     }
     .toPlayback {

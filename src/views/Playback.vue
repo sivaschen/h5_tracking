@@ -10,6 +10,7 @@
 </template>
 
 <script>
+import imgUrl from './../assets/car.png'
 export default {
     data(){
         return {
@@ -18,7 +19,43 @@ export default {
             imei: "",
             beginTime: "",
             endTime: "",
-            lngLatArr: []
+            lngLatArr: [],
+            playInterval: 3000,
+            testData: [
+                {
+                    imei:"668613099991111",
+                    lng:113.303037,
+                    lat:23.125178,
+                    name:"share001",
+                    speed:0,
+                    gps_time:1614904910,
+                    course:0 
+                    },{
+                    imei:"668613099991112",
+                    lng:113.410037,
+                    lat:23.125178,
+                    name:"share002",
+                    speed:1,
+                    gps_time:1614904920,
+                    course:0 
+                    },{
+                    imei:"668613099991113",
+                    lng:113.520037,
+                    lat:23.125178,
+                    name:"share003",
+                    speed:0,
+                    gps_time:1614905910,
+                    course:0 
+                    },{
+                    imei:"668613099991114",
+                    lng:113.631037,
+                    lat:23.125178,
+                    name:"share004",
+                    speed:2,
+                    gps_time:1614924910,
+                    course:0 
+                }
+            ]
         }
     },
     mounted(){
@@ -27,10 +64,20 @@ export default {
         //添加控件
         var ctrl = new T.Control.MapType();
         this.map.addControl(ctrl);
+        let data = {
+            errcode: 0,
+            data: {pos: this.testData}
+        }
+        this.historyCoordCallback(data)
     },
     created(){    
+        let {imei, begintime, endtime } = this.$route.query;
+        this.imei = imei;
+        this.beginTime = begintime;
+        this.endTime = endtime;
         window.historyCoordCallback = this.historyCoordCallback.bind(this);
         // this.getHistoryLocationData()
+        
     },
     beforeDestroy(){
         window.historyCoordCallback = null;
@@ -67,24 +114,59 @@ export default {
             window.native.call(JSON.stringify({
                 cmd: "historyCoord",
                 param:{
-                    begintime: 1614932778,
-                    endtime: 1614952778,
-                    imei: 668613900008888
+                    begintime: this.beginTime,
+                    endtime: this.endTime,
+                    imei: this.imei
                 },
                 callback: "historyCoordCallback"
             }));
         },
         historyCoordCallback(data){
             if(data.errcode == 0) {
-                this.lngLatArr = this.lngLatArr.concat(data.data.pos);
-                this.drawPath(data.data.pos);
+                this.lngLatArr = data.data.pos;
+                this.createMarker();
             } else {
                 console.error('获取数据失败');
                 this.getHistoryLocationData();
             }
         },
-        drawPath(arr){
-            this.map.addControl()
+        createMarker(){
+            var lnglat = new T.LngLat(this.lngLatArr[0].lng, this.lngLatArr[0].lat);
+             //创建图片对象
+            var icon = new T.Icon({
+                iconUrl: imgUrl,
+            });
+            this.infoWin = new T.InfoWindow();
+            this.infoWin.setLngLat(lnglat);
+            //设置信息窗口要显示的内容
+            this.infoWin.setContent(String(this.lngLatArr[0].name));
+            this.marker = new T.Marker(lnglat, {icon:icon});
+            this.map.addOverLay(this.marker);
+            this.map.addOverLay(this.infoWin);
+            this.polyline = new T.Polyline([lnglat, new T.LngLat(this.lngLatArr[1].lng, this.lngLatArr[1].lat)]);
+            this.map.addOverLay(this.polyline);
+            this.drawPath(1);
+        },
+        drawPath(index){
+            if(index > (this.lngLatArr.length - 1)) {
+                return
+            }
+            
+            this.timer = setTimeout(()=> {
+                let item = this.lngLatArr[index];
+                this.index = index;
+                let lngLat = new T.LngLat(item.lng, item.lat);
+                if(index >1) {
+                    let arr = this.polyline.getLngLats();
+                    console.log(this.polyline.getColor())
+                    this.polyline.setLngLats(arr.concat(lngLat))
+                    
+                }
+
+                this.marker.setLngLat(lngLat);
+                this.infoWin.setLngLat(lngLat)
+                this.drawPath(++index)
+            }, this.playInterval)
         }
     }
 }

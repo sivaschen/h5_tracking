@@ -8,9 +8,10 @@
     <div class="info">
       <div class="statusInfo">
         <span class="state">{{currentDevice.speed > 0 ? "行驶" : "静止"}}</span>&nbsp;&nbsp;&nbsp;
-        <span class="time">2小时</span>
+        <span class="time">{{currentDevice.speed > 0 ? (String(currentDevice.speed) + "km/h") : " "}}</span>
         <span class="separator">|</span>
         <span class="locatingType">北斗GPS</span>
+        <span class="toDeviceDetail" @click="toDeviceDetail">详情</span>
         <span class="toPlayback" @click="toPlayBack">回放</span>
       </div>
       <hr>
@@ -35,43 +36,53 @@ export default {
       controls: [{name: "mapType"}],
       currentIndex: 0,
       deviceList: [
-        {
-          imei:1,
-          lng:113.300037,
-          lat:23.125178,
-          name:111,
-          speed:0
-        },{
-          imei:2,
-          lng:113.410037,
-          lat:23.125178,
-          name:112,
-          speed:1
-        },{
-          imei:3,
-          lng:113.520037,
-          lat:23.125178,
-          name:113,
-          speed:0
-        },{
-          imei:4,
-          lng:113.631037,
-          lat:23.125178,
-          name:114,
-          speed:2
-        }
+        // {
+        //   imei:"668613099991111",
+        //   lng:113.303037,
+        //   lat:23.125178,
+        //   name:"share001",
+        //   speed:0,
+        //   gps_time:1614904910,
+        //   course:0 
+        // },{
+        //   imei:"668613099991112",
+        //   lng:113.410037,
+        //   lat:23.125178,
+        //   name:"share002",
+        //   speed:1,
+        //   gps_time:1614904920,
+        //   course:0 
+        // },{
+        //   imei:"668613099991113",
+        //   lng:113.520037,
+        //   lat:23.125178,
+        //   name:"share003",
+        //   speed:0,
+        //   gps_time:1614905910,
+        //   course:0 
+        // },{
+        //   imei:"668613099991114",
+        //   lng:113.631037,
+        //   lat:23.125178,
+        //   name:"share004",
+        //   speed:2,
+        //   gps_time:1614924910,
+        //   course:0 
+        // }
       ],
       markers: [],
       icon: {
         iconUrl:imgUrl  
       },
       currentDevice: {
-        imei:1,
-        lng:113.300037,
-        lat:23.125178,
-        speed: 12,
-        name:114,
-        address: ""
+        // imei:"668613099991111",
+        // lng:113.303037,
+        // lat:23.125178,
+        // name:"share001",
+        // speed:0,
+        // gps_time:1614904910,
+        // course:0,
+        // address: ""
       },
       infowindow: {
         content: "",
@@ -81,19 +92,23 @@ export default {
   },
   mounted(){
     this.map = new T.Map('mapContainer');
-    this.map.centerAndZoom(new T.LngLat(113.280637, 23.125178), 11);
+    this.map.centerAndZoom(new T.LngLat(113.280637, 23.125178), 16);
     //添加控件
     var ctrl = new T.Control.MapType();
     this.map.addControl(ctrl);
+
+    this.map.addEventListener("moveend", this.MapMoveend);
+
     // this.getLocationData()
     this.addMarkers();
     this.getAddress()
 
     //测试代码
-    // setInterval(()=>{
-    //   this.deviceList[0].lat += 0.01
-    //   this.updateMarkers()
-    // }, 5000)
+    setInterval(()=>{
+      // this.deviceList[0].lat += 0.01
+      // this.updateMarkers()
+      this.getLocationData()
+    }, 5000)
   },
   created(){    
     window.getDataCallback = this.getDataCallback.bind(this);    
@@ -102,7 +117,22 @@ export default {
   beforeDestroy(){
     window.getDataCallback = null;
   },
+
   methods: {
+    MapMoveend(e) {
+      console.log("MapMoveend");
+      this.zoom = this.map.getZoom();
+    },
+    toDeviceDetail() {
+      console.log("toDeviceDetail..")
+      window.native.call(JSON.stringify({
+        cmd: "deviceDetail",
+        param:{
+          "imei": this.currentDevice.imei
+        },
+        callback: ""
+        }));
+    },
     toPlayBack(){
       window.native.call(JSON.stringify({
         cmd: "timeSelection",
@@ -121,7 +151,7 @@ export default {
       };
       this.currentDevice = this.deviceList[this.currentIndex];
       this.getAddress()
-      this.map.centerAndZoom(new T.LngLat(this.currentDevice.lng, this.currentDevice.lat), 11);
+      this.map.centerAndZoom(new T.LngLat(this.currentDevice.lng, this.currentDevice.lat), this.zoom);
       this.currentMarker = this.markers[this.currentIndex];
       this.currentMarker.openInfoWindow(this.currentMarker.infowindow);
     },
@@ -134,11 +164,9 @@ export default {
       this.currentDevice = this.deviceList[this.currentIndex];
       this.getAddress();
       
-      this.map.centerAndZoom(new T.LngLat(this.currentDevice.lng, this.currentDevice.lat), 11);
+      this.map.centerAndZoom(new T.LngLat(this.currentDevice.lng, this.currentDevice.lat), this.zoom);
       this.currentMarker = this.markers[this.currentIndex]
       this.currentMarker.openInfoWindow(this.currentMarker.infowindow)
-
-
     },
     getLocationData(){
       window.native.call(JSON.stringify({
@@ -147,23 +175,44 @@ export default {
         },
         callback: "getDataCallback"
         }));
-        
     },
     getDataCallback(data){
-      if(data.errcode == 0) {
-        this.deviceList = data.data;
-        this.currentDevice = this.deviceList[this.currentIndex];
+      let myData = JSON.parse(data)
+      console.log(myData.errcode)
+      if(myData.errcode == 0) {
+        this.deviceList = myData.data;
+        let currentIMEI = this.currentDevice.imei
+        console.log(currentIMEI)
+
+        if (currentIMEI == undefined && this.deviceList.length > 0) {
+          console.log("is zero")
+          this.currentDevice = this.deviceList[0];
+          this.currentIndex = 0;
+        }
+        else {
+          console.log("loop==")
+          for (let index = 0; index < this.deviceList.length; index++) {
+            const element = this.deviceList[index];
+            if (currentIMEI == element.imei) {
+              this.currentDevice = element
+              this.currentIndex = index;
+              break;
+            }
+          }
+        }
         this.getAddress();
         if(this.firstLoad){
-          this.map.centerAndZoom(new T.LngLat(this.currentDevice.lng, this.currentDevice.lat), 11);
+          console.log("firstload")
+          this.map.centerAndZoom(new T.LngLat(this.currentDevice.lng, this.currentDevice.lat), this.zoom);
           this.addMarkers();
+          this.firstLoad = false;
         } else {
+          console.log("update");
           this.updateMarkers()
         }
       } else {
         console.error('获取数据失败')
       }
-      setTimeout(this.getLocationData, 3000);
     },
     updateMarkers(){
       let deviceList = this.deviceList.slice(0);
@@ -178,9 +227,13 @@ export default {
         if(lngLat.lat != obj[imei].lat || lngLat.lng != obj[imei].lng) {
           marker.setLngLat(new T.LngLat(obj[imei].lng, obj[imei].lat))
         }
+        console.log("update maker");
+
         if(marker.infowindow.getContent()!=obj[imei].name){
           marker.infowindow.setContent(obj[imei].name)
         }
+        console.log("update maker...");
+
       }
     },
     getAddress(){
@@ -277,6 +330,10 @@ export default {
       margin-right: 10px;
       margin-left: 10px;
     }
+    .toDeviceDetail {
+      margin-right: 10px;
+      color: rgb(44, 117, 167);
+    }
     .toPlayback {
       float: right;
       color: rgb(44, 117, 167);
@@ -287,6 +344,10 @@ export default {
     p {
       margin: 0;
       padding: 0;
+    }
+    .name {
+      color: black;
+      font-size:20px;
     }
     .address {
       margin-top: 3px;

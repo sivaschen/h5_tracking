@@ -7,11 +7,11 @@
             <span class="mileage">总里程：{{mileage}}km</span>
             <span class="speed">时速：{{currentSpeed}}km/h</span>
             <hr>
-            <span class="time">时间：{{currentTime}}</span></br>
-            <span class="play">Play</span>
+            <span class="time">时间：{{currentTime}}</span><br/>
+            <span :class="[this.playState == 'play' ? 'icon-pause' : 'icon-play', 'iconfont', 'iconstyle']" @click="playAndPause"></span>
             <span class="progress">
                 <span class="line"></span>
-                <span class="circle"></span>
+                <span class="circle" :style="{'left': circleLeft+'%'}"></span>
             </span>
 
         </div>
@@ -23,6 +23,8 @@ import imgUrl from './../assets/car.png'
 export default {
     data(){
         return {
+            playState: "init",
+            circleLeft: 0,
             deviceName: "",
             mileage: 0,
             currentSpeed: 0,
@@ -34,6 +36,9 @@ export default {
             endTime: "",
             lngLatArr: [],
             playInterval: 1000,
+            firstPointTime: "",
+            progressScale: "",
+            timer: null,
             testData: [
                 {
                     imei:"668613099991111",
@@ -49,7 +54,7 @@ export default {
                     lat:23.125178,
                     name:"share002",
                     speed:1,
-                    gps_time:1614904920,
+                    gps_time:1614905910,
                     course:0 
                     },{
                     imei:"668613099991113",
@@ -57,7 +62,7 @@ export default {
                     lat:23.125178,
                     name:"share003",
                     speed:3,
-                    gps_time:1614905910,
+                    gps_time:1614906910,
                     course:0 
                     },{
                     imei:"668613099991114",
@@ -65,7 +70,7 @@ export default {
                     lat:23.125178,
                     name:"share004",
                     speed:2,
-                    gps_time:1614924910,
+                    gps_time:1614908910,
                     course:0 
                 }
             ]
@@ -123,6 +128,19 @@ export default {
         // }
     },
     methods:{
+        playAndPause() {
+            console.log(this.playState)
+            if(this.playState == "play"){
+                clearTimeout(this.timer);
+                this.playState = "pause";
+            } else if (this.playState == "pause") {
+                this.playState = "play"
+                this.drawPath(this.index, 1);                
+            } else if(this.playState == "complete") {
+                this.map.clearOverLays();
+                this.createMarker()
+            }
+        },
         getHistoryLocationData(){
             window.native.call(JSON.stringify({
                 cmd: "historyCoord",
@@ -144,10 +162,13 @@ export default {
             }
         },
         createMarker(){
+            this.mileage = 0;
+            this.progressScale = this.lngLatArr[this.lngLatArr.length -1].gps_time - this.lngLatArr[0].gps_time;
             this.deviceName = this.lngLatArr[0].name;
             this.currentSpeed = this.lngLatArr[0].speed;
             this.currentTime = this.timeFormat(this.lngLatArr[0].gps_time);            
             var lnglat = new T.LngLat(this.lngLatArr[0].lng, this.lngLatArr[0].lat);
+            this.map.panTo(lnglat);
              //创建图片对象
             var icon = new T.Icon({
                 iconUrl: imgUrl,
@@ -160,36 +181,42 @@ export default {
             this.map.addOverLay(this.marker);
             this.map.addOverLay(this.infoWin);
             this.polyline = new T.Polyline([lnglat, new T.LngLat(this.lngLatArr[1].lng, this.lngLatArr[1].lat)], {color:"rgb(3, 77, 19)"});
-            this.map.addOverLay(this.polyline);
+            
+            this.playState = "play"
             this.drawPath(1);
         },
-        drawPath(index){
-            if(index > (this.lngLatArr.length - 1)) {
+        drawPath(index, interval){
+            if (index > (this.lngLatArr.length - 1)) {
                 return
             }
-            
             this.timer = setTimeout(()=> {
                 let item = this.lngLatArr[index];
                 this.currentSpeed = item.speed;
                 this.index = index;
                 let lngLat = new T.LngLat(item.lng, item.lat);
+
+                //提前移动地图
                 if(index < this.lngLatArr.length-1) {
                     let nextLngLat = new T.LngLat(this.lngLatArr[index+1].lng, this.lngLatArr[index+1].lat);
                     this.map.getBounds().contains(nextLngLat) || this.map.panTo(nextLngLat);
                 }
-
-                if(index >1) {
+                index == 1 && this.map.addOverLay(this.polyline);
+                if(index >=1) {                    
                     let arr = this.polyline.getLngLats();
                     this.polyline.setLngLats(arr.concat(lngLat));
-                    
+                    this.circleLeft = ((item.gps_time - this.lngLatArr[0].gps_time) / this.progressScale) * 100;
                     this.mileage += Number((this.getFlatternDistance(this.lngLatArr[index -1].lat,this.lngLatArr[index -1].lng,item.lat,item.lng) / 1000).toFixed(2));
                     this.currentTime = this.timeFormat(item.gps_time);
                 }
 
                 this.marker.setLngLat(lngLat);
                 this.infoWin.setLngLat(lngLat)
-                this.drawPath(++index)
-            }, this.playInterval)
+                if (index == (this.lngLatArr.length -1)) {
+                    this.playState = "complete";
+                } else {
+                    this.drawPath(++index);
+                }
+            }, interval || this.playInterval)
         },
         getFlatternDistance (lat1, lng1, lat2, lng2) {
             const PI = Math.PI
@@ -265,8 +292,36 @@ export default {
             padding: 20px;
             box-sizing: border-box;
             text-align: left;
+            .iconstyle {
+                vertical-align: middle;
+                font-size: 22px;
+                margin-right: 12px;
+
+            }
             .mileage {
                 margin-right: 15px;
+            }
+            .progress {
+                width: 80%;
+                display: inline-block;
+                position: relative;
+                margin-top: 5px;
+                .line {
+                    display: inline-block;
+                    background-color: rgb(182, 178, 178);
+                    height: 3px;
+                    width: 100%;
+                    vertical-align: middle;
+                }
+                .circle {
+                    position: absolute;
+                    width: 18px;                    
+                    height: 18px;
+                    border-radius: 50%;
+                    transform: translateX(-9px);
+                    top: 0;
+                    background-color: green;
+                }
             }
         }
     }

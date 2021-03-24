@@ -35,40 +35,41 @@ export default {
       zoom: 11,
       controls: [{name: "mapType"}],
       currentIndex: 0,
-      deviceList: [
-        // {
-        //   imei:"668613099991111",
-        //   lng:113.303037,
-        //   lat:23.125178,
-        //   name:"share001",
-        //   speed:0,
-        //   gps_time:1614904910,
-        //   course:0 
-        // },{
-        //   imei:"668613099991112",
-        //   lng:113.410037,
-        //   lat:23.125178,
-        //   name:"share002",
-        //   speed:1,
-        //   gps_time:1614904920,
-        //   course:0 
-        // },{
-        //   imei:"668613099991113",
-        //   lng:113.520037,
-        //   lat:23.125178,
-        //   name:"share003",
-        //   speed:0,
-        //   gps_time:1614905910,
-        //   course:0 
-        // },{
-        //   imei:"668613099991114",
-        //   lng:113.631037,
-        //   lat:23.125178,
-        //   name:"share004",
-        //   speed:2,
-        //   gps_time:1614924910,
-        //   course:0 
-        // }
+      deviceList: [],
+      testData: [
+        {
+          imei:"668613099991111",
+          lng:113.303037,
+          lat:23.125178,
+          name:"share001",
+          speed:0,
+          gps_time:1614904910,
+          course:0 
+        },{
+          imei:"668613099991112",
+          lng:113.410037,
+          lat:23.125178,
+          name:"share002",
+          speed:1,
+          gps_time:1614904920,
+          course:0 
+        },{
+          imei:"668613099991113",
+          lng:113.520037,
+          lat:23.125178,
+          name:"share003",
+          speed:0,
+          gps_time:1614905910,
+          course:0 
+        },{
+          imei:"668613099991114",
+          lng:113.631037,
+          lat:23.125178,
+          name:"share004",
+          speed:2,
+          gps_time:1614924910,
+          course:0 
+        }
       ],
       markers: [],
       icon: {
@@ -84,10 +85,7 @@ export default {
         // course:0,
         // address: ""
       },
-      infowindow: {
-        content: "",
-        target: null
-      }
+      infowindow: null
     };
   },
   mounted(){
@@ -104,11 +102,13 @@ export default {
     this.getAddress()
 
     //测试代码
-    setInterval(()=>{
-      // this.deviceList[0].lat += 0.01
-      // this.updateMarkers()
-      this.getLocationData()
-    }, 5000)
+    // setInterval(()=>{
+    //   this.testData[0].lat += 0.01
+    //   this.updateMarkers()
+    //   // this.getLocationData()
+
+    //   this.getDataCallback();
+    // }, 5000)
   },
   created(){    
     window.getDataCallback = this.getDataCallback.bind(this);    
@@ -120,11 +120,9 @@ export default {
 
   methods: {
     MapMoveend(e) {
-      console.log("MapMoveend");
       this.zoom = this.map.getZoom();
     },
     toDeviceDetail() {
-      console.log("toDeviceDetail..")
       window.native.call(JSON.stringify({
         cmd: "deviceDetail",
         param:{
@@ -153,7 +151,9 @@ export default {
       this.getAddress()
       this.map.centerAndZoom(new T.LngLat(this.currentDevice.lng, this.currentDevice.lat), this.zoom);
       this.currentMarker = this.markers[this.currentIndex];
-      this.currentMarker.openInfoWindow(this.currentMarker.infowindow);
+      this.infowindow.closeInfoWindow();
+      this.infowindow = this.currentMarker.infowindow;
+      this.map.addOverLay(this.infowindow);
     },
     nextDevice(){
       if(this.currentIndex == (this.deviceList.length -1)) {
@@ -163,10 +163,11 @@ export default {
       };
       this.currentDevice = this.deviceList[this.currentIndex];
       this.getAddress();
-      
       this.map.centerAndZoom(new T.LngLat(this.currentDevice.lng, this.currentDevice.lat), this.zoom);
-      this.currentMarker = this.markers[this.currentIndex]
-      this.currentMarker.openInfoWindow(this.currentMarker.infowindow)
+      this.currentMarker = this.markers[this.currentIndex];
+      this.infowindow.closeInfoWindow();
+      this.infowindow = this.currentMarker.infowindow;
+      this.map.addOverLay(this.infowindow);
     },
     getLocationData(){
       window.native.call(JSON.stringify({
@@ -177,19 +178,17 @@ export default {
         }));
     },
     getDataCallback(data){
-      let myData = JSON.parse(data)
+      // let myData = JSON.parse(data)
+      let myData = {errcode : 0}
       if(myData.errcode == 0) {
-        this.deviceList = myData.data;
+        // this.deviceList = myData.data;
+        this.deviceList = this.testData;
         let currentIMEI = this.currentDevice.imei
-        console.log(currentIMEI)
-
         if (currentIMEI == undefined && this.deviceList.length > 0) {
-          console.log("is zero")
           this.currentDevice = this.deviceList[0];
           this.currentIndex = 0;
         }
         else {
-          console.log("loop==")
           for (let index = 0; index < this.deviceList.length; index++) {
             const element = this.deviceList[index];
             if (currentIMEI == element.imei) {
@@ -227,14 +226,15 @@ export default {
           let lngLat = new T.LngLat(obj[imei].lng, obj[imei].lat)
           marker.setLngLat(lngLat);
           marker.infowindow.setLngLat(lngLat);
+          if(marker.infowindow.isOpen()) {
+            this.map.getBounds().contains(lngLat) || this.map.panTo(lngLat);
+          }
         }
-        console.log("update maker");
+
 
         if(marker.infowindow.getContent()!=obj[imei].name){
           marker.infowindow.setContent(obj[imei].name)
         }
-        console.log("update maker...");
-
       }
     },
     getAddress(){
@@ -252,16 +252,19 @@ export default {
     addMarkers(){        
       const _that = this;
       for (let i = 0; i < this.deviceList.length; i++) {
+
         let item = this.deviceList[i];
         var lnglat = new T.LngLat(item.lng, item.lat);
         //创建信息窗口对象
          //创建信息窗口对象
+        let point = new T.Point(12,12)
         var infoWin = new T.InfoWindow();
+        infoWin.setOffset(point);
         infoWin.setLngLat(lnglat);
         //设置信息窗口要显示的内容
         infoWin.setContent(String(item.name));
         //向地图上添加信息窗口
-        // this.map.addOverLay(infoWin);
+        
          //创建图片对象
         var icon = new T.Icon({
           iconUrl: imgUrl,
@@ -272,15 +275,21 @@ export default {
         marker.infowindow = infoWin;
         marker.index = i;
         marker.imei = item.imei;
+        if(i == 0) {
+          this.map.addOverLay(infoWin);
+          this.infowindow = infoWin;
+        }
         marker.addEventListener("click", function () {
+          _that.currentMarker = this;
           let info = this.infowindow;
-          this.openInfoWindow(info);
+          _that.infowindow.closeInfoWindow();
+          _that.infowindow = info;
+          _that.map.addOverLay(info);
           _that.currentDevice = _that.deviceList[this.index];
           _that.getAddress()
         });
         //向地图上添加标注
         this.map.addOverLay(marker);
-        
       }
     },
     openInfowidow({ target, extData }) {

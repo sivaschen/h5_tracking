@@ -72,6 +72,94 @@ export default {
                     speed:2,
                     gps_time:1614908910,
                     course:0 
+                },{
+                    imei:"668613099991114",
+                    lng:113.641037,
+                    lat:23.125178,
+                    name:"share004",
+                    speed:2,
+                    gps_time:1614908910,
+                    course:0 
+                },{
+                    imei:"668613099991114",
+                    lng:113.651037,
+                    lat:23.125178,
+                    name:"share004",
+                    speed:2,
+                    gps_time:1614908910,
+                    course:0 
+                },{
+                    imei:"668613099991114",
+                    lng:113.661037,
+                    lat:23.125178,
+                    name:"share004",
+                    speed:2,
+                    gps_time:1614908910,
+                    course:0 
+                },{
+                    imei:"668613099991114",
+                    lng:113.671037,
+                    lat:23.125178,
+                    name:"share004",
+                    speed:2,
+                    gps_time:1614908910,
+                    course:0 
+                },{
+                    imei:"668613099991114",
+                    lng:113.681037,
+                    lat:23.125178,
+                    name:"share004",
+                    speed:2,
+                    gps_time:1614908910,
+                    course:0 
+                },{
+                    imei:"668613099991114",
+                    lng:113.691037,
+                    lat:23.125178,
+                    name:"share004",
+                    speed:2,
+                    gps_time:1614908910,
+                    course:0 
+                },{
+                    imei:"668613099991114",
+                    lng:113.701037,
+                    lat:23.125178,
+                    name:"share004",
+                    speed:2,
+                    gps_time:1614908910,
+                    course:0 
+                },{
+                    imei:"668613099991114",
+                    lng:113.711037,
+                    lat:23.125178,
+                    name:"share004",
+                    speed:2,
+                    gps_time:1614908910,
+                    course:0 
+                },{
+                    imei:"668613099991114",
+                    lng:113.721037,
+                    lat:23.125178,
+                    name:"share004",
+                    speed:2,
+                    gps_time:1614908910,
+                    course:0 
+                },{
+                    imei:"668613099991114",
+                    lng:113.731037,
+                    lat:23.125178,
+                    name:"share004",
+                    speed:2,
+                    gps_time:1614908910,
+                    course:0 
+                },{
+                    imei:"668613099991114",
+                    lng:113.741037,
+                    lat:23.125178,
+                    name:"share004",
+                    speed:2,
+                    gps_time:1614908910,
+                    course:0 
                 }
             ]
         }
@@ -95,7 +183,6 @@ export default {
         this.endTime = endtime;
         window.historyCoordCallback = this.historyCoordCallback.bind(this);
         // this.getHistoryLocationData()
-        
     },
     beforeDestroy(){
         window.historyCoordCallback = null;
@@ -173,10 +260,9 @@ export default {
             var icon = new T.Icon({
                 iconUrl: imgUrl,
             });
-            this.infoWin = new T.InfoWindow();
+            this.infoWin = new T.InfoWindow(String(this.lngLatArr[0].name),{offset: new T.Point(12,12)});
             this.infoWin.setLngLat(lnglat);
             //设置信息窗口要显示的内容
-            this.infoWin.setContent(String(this.lngLatArr[0].name));
             this.marker = new T.Marker(lnglat, {icon:icon});
             this.map.addOverLay(this.marker);
             this.map.addOverLay(this.infoWin);
@@ -194,7 +280,6 @@ export default {
                 this.currentSpeed = item.speed;
                 this.index = index;
                 let lngLat = new T.LngLat(item.lng, item.lat);
-
                 //提前移动地图
                 if(index < this.lngLatArr.length-1) {
                     let nextLngLat = new T.LngLat(this.lngLatArr[index+1].lng, this.lngLatArr[index+1].lat);
@@ -206,9 +291,10 @@ export default {
                     this.polyline.setLngLats(arr.concat(lngLat));
                     this.circleLeft = ((item.gps_time - this.lngLatArr[0].gps_time) / this.progressScale) * 100;
                     this.mileage += Number((this.getFlatternDistance(this.lngLatArr[index -1].lat,this.lngLatArr[index -1].lng,item.lat,item.lng) / 1000).toFixed(2));
+                    let arr1 = String(this.mileage).split('.');
+                    this.mileage = Number(arr1[0] + '.' + arr1[1].slice(0,2));
                     this.currentTime = this.timeFormat(item.gps_time);
                 }
-
                 this.marker.setLngLat(lngLat);
                 this.infoWin.setLngLat(lngLat)
                 if (index == (this.lngLatArr.length -1)) {

@@ -26,7 +26,7 @@ export default {
             playState: "init",
             circleLeft: 0,
             deviceName: "",
-            mileage: 0,
+            mileage: 0.00,
             currentSpeed: 0,
             currentTime: "2000-00-00 00:00:00",
             center: [113.280637, 23.125178],
@@ -35,133 +35,10 @@ export default {
             beginTime: "",
             endTime: "",
             lngLatArr: [],
-            playInterval: 1000,
+            playInterval: 300,
             firstPointTime: "",
             progressScale: "",
-            timer: null,
-            testData: [
-                {
-                    imei:"668613099991111",
-                    lng:113.303037,
-                    lat:23.125178,
-                    name:"share001",
-                    speed:0,
-                    gps_time:1614904910,
-                    course:0 
-                    },{
-                    imei:"668613099991112",
-                    lng:113.410037,
-                    lat:23.125178,
-                    name:"share002",
-                    speed:1,
-                    gps_time:1614905910,
-                    course:0 
-                    },{
-                    imei:"668613099991113",
-                    lng:113.520037,
-                    lat:23.125178,
-                    name:"share003",
-                    speed:3,
-                    gps_time:1614906910,
-                    course:0 
-                    },{
-                    imei:"668613099991114",
-                    lng:113.631037,
-                    lat:23.125178,
-                    name:"share004",
-                    speed:2,
-                    gps_time:1614908910,
-                    course:0 
-                },{
-                    imei:"668613099991114",
-                    lng:113.641037,
-                    lat:23.125178,
-                    name:"share004",
-                    speed:2,
-                    gps_time:1614908910,
-                    course:0 
-                },{
-                    imei:"668613099991114",
-                    lng:113.651037,
-                    lat:23.125178,
-                    name:"share004",
-                    speed:2,
-                    gps_time:1614908910,
-                    course:0 
-                },{
-                    imei:"668613099991114",
-                    lng:113.661037,
-                    lat:23.125178,
-                    name:"share004",
-                    speed:2,
-                    gps_time:1614908910,
-                    course:0 
-                },{
-                    imei:"668613099991114",
-                    lng:113.671037,
-                    lat:23.125178,
-                    name:"share004",
-                    speed:2,
-                    gps_time:1614908910,
-                    course:0 
-                },{
-                    imei:"668613099991114",
-                    lng:113.681037,
-                    lat:23.125178,
-                    name:"share004",
-                    speed:2,
-                    gps_time:1614908910,
-                    course:0 
-                },{
-                    imei:"668613099991114",
-                    lng:113.691037,
-                    lat:23.125178,
-                    name:"share004",
-                    speed:2,
-                    gps_time:1614908910,
-                    course:0 
-                },{
-                    imei:"668613099991114",
-                    lng:113.701037,
-                    lat:23.125178,
-                    name:"share004",
-                    speed:2,
-                    gps_time:1614908910,
-                    course:0 
-                },{
-                    imei:"668613099991114",
-                    lng:113.711037,
-                    lat:23.125178,
-                    name:"share004",
-                    speed:2,
-                    gps_time:1614908910,
-                    course:0 
-                },{
-                    imei:"668613099991114",
-                    lng:113.721037,
-                    lat:23.125178,
-                    name:"share004",
-                    speed:2,
-                    gps_time:1614908910,
-                    course:0 
-                },{
-                    imei:"668613099991114",
-                    lng:113.731037,
-                    lat:23.125178,
-                    name:"share004",
-                    speed:2,
-                    gps_time:1614908910,
-                    course:0 
-                },{
-                    imei:"668613099991114",
-                    lng:113.741037,
-                    lat:23.125178,
-                    name:"share004",
-                    speed:2,
-                    gps_time:1614908910,
-                    course:0 
-                }
-            ]
+            timer: null
         }
     },
     mounted(){
@@ -170,11 +47,9 @@ export default {
         //添加控件
         var ctrl = new T.Control.MapType();
         this.map.addControl(ctrl);
-        let data = {
-            errcode: 0,
-            data: {pos: this.testData}
-        }
-        this.historyCoordCallback(data)
+       
+        setTimeout(this.getHistoryLocationData, 1000)    
+        
     },
     created(){    
         let {imei, begintime, endtime } = this.$route.query;
@@ -182,37 +57,9 @@ export default {
         this.beginTime = begintime;
         this.endTime = endtime;
         window.historyCoordCallback = this.historyCoordCallback.bind(this);
-        // this.getHistoryLocationData()
     },
     beforeDestroy(){
         window.historyCoordCallback = null;
-        // {
-        // "success":true,
-        // "errcode":0,
-        // "msg":"OK",
-        // "data":{
-        // "pos":[
-        // {
-        // "lng":113.867562,
-        // "lat":33.700943,
-        // "gps_time":1614904909,
-        // "course":0,
-        // "speed":2,
-        // "sysTime":1614904909,
-        // "sequenceNo":11688
-        // },
-        // {
-        // "lng":113.867562,
-        // "lat":33.700945,
-        // "gps_time":1614904910,
-        // "course":0,
-        // "speed":0,
-        // "sysTime":1614904910,
-        // "sequenceNo":11689
-        // }
-        // ]
-        // }
-        // }
     },
     methods:{
         playAndPause() {
@@ -229,6 +76,7 @@ export default {
             }
         },
         getHistoryLocationData(){
+            console.log('start');
             window.native.call(JSON.stringify({
                 cmd: "historyCoord",
                 param:{
@@ -237,9 +85,12 @@ export default {
                     imei: this.imei
                 },
                 callback: "historyCoordCallback"
-            }));
+            })
+            );
         },
-        historyCoordCallback(data){
+        historyCoordCallback(res){
+            let data = JSON.parse(res)
+            console.log(res)
             if(data.errcode == 0) {
                 this.lngLatArr = data.data.pos;
                 this.createMarker();
@@ -249,7 +100,7 @@ export default {
             }
         },
         createMarker(){
-            this.mileage = 0;
+            this.mileage = 0.00;
             this.progressScale = this.lngLatArr[this.lngLatArr.length -1].gps_time - this.lngLatArr[0].gps_time;
             this.deviceName = this.lngLatArr[0].name;
             this.currentSpeed = this.lngLatArr[0].speed;
@@ -290,10 +141,16 @@ export default {
                     let arr = this.polyline.getLngLats();
                     this.polyline.setLngLats(arr.concat(lngLat));
                     this.circleLeft = ((item.gps_time - this.lngLatArr[0].gps_time) / this.progressScale) * 100;
-                    this.mileage += Number((this.getFlatternDistance(this.lngLatArr[index -1].lat,this.lngLatArr[index -1].lng,item.lat,item.lng) / 1000).toFixed(2));
-                    let arr1 = String(this.mileage).split('.');
-                    this.mileage = Number(arr1[0] + '.' + arr1[1].slice(0,2));
-                    this.currentTime = this.timeFormat(item.gps_time);
+                    if(this.lngLatArr[index -1].lat == item.lat && this.lngLatArr[index -1].lng==item.lng) {
+                        this.mileage = this.mileage;
+                    } else {
+                        
+                        let distance = this.getFlatternDistance(this.lngLatArr[index -1].lat,this.lngLatArr[index -1].lng,item.lat,item.lng) / 1000;
+                        this.mileage = this.mileage + distance;
+                        let dotSeq = String(this.mileage).indexOf('.');                        
+                        this.mileage = Number(String(this.mileage).substring(0,dotSeq+3));
+                        this.currentTime = this.timeFormat(item.gps_time);
+                    }
                 }
                 this.marker.setLngLat(lngLat);
                 this.infoWin.setLngLat(lngLat)
@@ -396,6 +253,7 @@ export default {
                     display: inline-block;
                     background-color: rgb(182, 178, 178);
                     height: 3px;
+                    line-height: 18px;
                     width: 100%;
                     vertical-align: middle;
                 }
@@ -405,8 +263,11 @@ export default {
                     height: 18px;
                     border-radius: 50%;
                     transform: translateX(-9px);
+                    line-height: 18px;
                     top: 0;
+                    margin-top: 3px;
                     background-color: green;
+                    vertical-align: middle;
                 }
             }
         }

@@ -7,8 +7,8 @@
     </div>
     <div class="info">
       <div class="statusInfo">
-        <span class="state">{{currentDevice.speed > 0 ? "行驶" : "静止"}}</span>&nbsp;&nbsp;&nbsp;
-        <span class="time">{{currentDevice.speed > 0 ? (String(currentDevice.speed) + "km/h") : " "}}</span>
+        <span :class="[ currentDevice.speed > 0 ? 'green' : 'blue' ]">{{currentDevice.speed > 0 ? "行驶" : "静止"}}</span>&nbsp;&nbsp;&nbsp;
+        <span :class="[ currentDevice.speed > 0 ? 'timegreen' : 'time' ]">{{currentDevice.speed > 0 ? (String(currentDevice.speed) + "km/h") : " "}}</span>
         <span class="separator">|</span>
         <span class="locatingType">北斗GPS</span>
         <span class="toPlayback" @click="toPlayBack">回放</span>
@@ -36,55 +36,11 @@ export default {
       controls: [{name: "mapType"}],
       currentIndex: 0,
       deviceList: [],
-      testData: [
-        {
-          imei:"668613099991111",
-          lng:113.303037,
-          lat:23.125178,
-          name:"share001",
-          speed:0,
-          gps_time:1614904910,
-          course:0 
-        },{
-          imei:"668613099991112",
-          lng:113.410037,
-          lat:23.125178,
-          name:"share002",
-          speed:1,
-          gps_time:1614904920,
-          course:0 
-        },{
-          imei:"668613099991113",
-          lng:113.520037,
-          lat:23.125178,
-          name:"share003",
-          speed:0,
-          gps_time:1614905910,
-          course:0 
-        },{
-          imei:"668613099991114",
-          lng:113.631037,
-          lat:23.125178,
-          name:"share004",
-          speed:2,
-          gps_time:1614924910,
-          course:0 
-        }
-      ],
       markers: [],
       icon: {
         iconUrl:imgUrl  
       },
-      currentDevice: {
-        // imei:"668613099991111",
-        // lng:113.303037,
-        // lat:23.125178,
-        // name:"share001",
-        // speed:0,
-        // gps_time:1614904910,
-        // course:0,
-        // address: ""
-      },
+      currentDevice: {},
       infowindow: null
     };
   },
@@ -97,18 +53,12 @@ export default {
 
     this.map.addEventListener("moveend", this.MapMoveend);
 
-    // this.getLocationData()
-    this.addMarkers();
-    this.getAddress()
+    // this.getLocationData();
 
     //测试代码
-    // setInterval(()=>{
-    //   this.testData[0].lat += 0.01
-    //   this.updateMarkers()
-    //   // this.getLocationData()
-
-    //   this.getDataCallback();
-    // }, 5000)
+    setInterval(()=>{
+      this.getLocationData();
+    }, 3000)
   },
   created(){    
     window.getDataCallback = this.getDataCallback.bind(this);    
@@ -178,11 +128,9 @@ export default {
         }));
     },
     getDataCallback(data){
-      // let myData = JSON.parse(data)
-      let myData = {errcode : 0}
+      let myData = JSON.parse(data)
       if(myData.errcode == 0) {
-        // this.deviceList = myData.data;
-        this.deviceList = this.testData;
+        this.deviceList = myData.data;
         let currentIMEI = this.currentDevice.imei
         if (currentIMEI == undefined && this.deviceList.length > 0) {
           this.currentDevice = this.deviceList[0];
@@ -200,12 +148,12 @@ export default {
         }
         this.getAddress();
         if(this.firstLoad){
-          console.log("firstload")
+          console.log("firstload");
+          console.log(this.currentDevice);
           this.map.centerAndZoom(new T.LngLat(this.currentDevice.lng, this.currentDevice.lat), this.zoom);
           this.addMarkers();
           this.firstLoad = false;
         } else {
-          console.log("update");
           this.updateMarkers()
         }
       } else {
@@ -221,6 +169,7 @@ export default {
       for (let i = 0; i < this.markers.length; i++) {
         let marker = this.markers[i];
         let imei = marker.imei;
+        console.log(imei)
         let lngLat = marker.getLngLat();
         if(lngLat.lat != obj[imei].lat || lngLat.lng != obj[imei].lng) {
           let lngLat = new T.LngLat(obj[imei].lng, obj[imei].lat)
@@ -231,9 +180,9 @@ export default {
           }
         }
 
-
-        if(marker.infowindow.getContent()!=obj[imei].name){
-          marker.infowindow.setContent(obj[imei].name)
+        let windowContent = marker.infowindow.getContent();
+        if(windowContent != obj[imei].name){
+          marker.infowindow.setContent(obj[imei].name);
         }
       }
     },
@@ -252,7 +201,6 @@ export default {
     addMarkers(){        
       const _that = this;
       for (let i = 0; i < this.deviceList.length; i++) {
-
         let item = this.deviceList[i];
         var lnglat = new T.LngLat(item.lng, item.lat);
         //创建信息窗口对象
@@ -329,13 +277,21 @@ export default {
 
   .statusInfo {
     margin-top: 15px;
-    .state {
+    .blue {
       color: skyblue;
+    }
+    .green {
+      color: green;
     }
     .time {
       color: skyblue;
       margin-left: 10px;
+     
     }
+     .timegreen {
+        color: green;
+        margin-left: 10px;
+      }
     .separator {
       margin-right: 10px;
       margin-left: 10px;

@@ -129,7 +129,7 @@ export default {
     },
     getDataCallback(data){
       let myData = JSON.parse(data)
-      if(myData.errcode == 0) {
+      if(myData.errcode == 0 && myData.data.length>0) {
         this.deviceList = myData.data;
         let currentIMEI = this.currentDevice.imei
         if (currentIMEI == undefined && this.deviceList.length > 0) {

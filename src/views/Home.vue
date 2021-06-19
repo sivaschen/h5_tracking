@@ -13,6 +13,16 @@ export default {
   name: 'Home',
   components: {
     HelloWorld
+  },
+  created(){
+    let data = {
+      success:true,
+      errcode :0,
+      msg:"OK",
+      data: {
+        imeis
+      }
+    }
   }
 }
 </script>

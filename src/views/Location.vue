@@ -6,6 +6,9 @@
       <p class="next" @click="nextDevice">^</p>
     </div>
     <div class="info">
+      <div class="myLocationBtn" @click="toMyLocation">
+
+      </div>
       <div class="statusInfo">
         <span :class="[ currentDevice.speed > 0 ? 'green' : 'blue' ]">{{currentDevice.speed > 0 ? "行驶" : "静止"}}</span>&nbsp;&nbsp;&nbsp;
         <span :class="[ currentDevice.speed > 0 ? 'timegreen' : 'time' ]">{{currentDevice.speed > 0 ? (String(currentDevice.speed) + "km/h") : " "}}</span>
@@ -20,15 +23,20 @@
         <p class="address">{{address}}</p>
       </div>
     </div>
+    <div id="permissionToast" v-if="showPermissionToast" @click="compassStartEvent" @touchend="touchEndEvent" @touchstart="touchStartEvent">开启指南针</div>
   </div>
 </template>
 
 <script>
 import imgUrl from './../assets/car.png'
+import compassImg from './../assets/compass.png'
+import arrowImg from './../assets/arrow.png'
+import pointImg from './../assets/point.png'
 
 export default {
   data() {
     return {
+      testData:{},
       address: "",
       firstLoad:true,
       center: [113.280637, 23.125178],
@@ -41,26 +49,94 @@ export default {
         iconUrl:imgUrl  
       },
       currentDevice: {},
-      infowindow: null
+      infowindow: null,
+      myLocation: null,
+      pdefinedOverlay: null,
+      showPermissionToast:false,
+      askPermission:false,
+      permissonState: "unknown",
+      loopMyLocation:false,
+      markerOwnPosition: null
     };
   },
-  mounted(){
+  mounted: async function(){  
     this.map = new T.Map('mapContainer');
-    this.map.centerAndZoom(new T.LngLat(113.280637, 23.125178), 16);
     //添加控件
     var ctrl = new T.Control.MapType();
     this.map.addControl(ctrl);
-
     this.map.addEventListener("moveend", this.MapMoveend);
-
-    // this.getLocationData();
-
+    
     //测试代码
-    setInterval(()=>{
-      this.getLocationData();
-    }, 3000)
+    this.testData = {
+        "success":true,
+        "errcode":0,
+        "msg":"OK",
+        "data": {
+          "imeis": [{
+          "imei":"668613900008888",
+            "lng":113.867562,
+            "lat":33.700945,
+            "gps_time":1614904910,
+            "course":0,
+            "speed":0,
+          "name": "Constantinus",
+          "remark": ""
+        }, {
+          "imei":"668613900007777",
+            "lng":113.867562,
+            "lat":33.720945,
+            "gps_time":1614904910,
+            "course":0,
+            "speed":0,
+          "name": "cosime",
+          "remark": ""
+        }],
+          "my_location": {
+            "lng":113.867562,
+            "lat":33.700945,
+            "gps_time":1614904910,
+            "course":0,
+            "speed":0,
+          "heading": 0 //指南针方向
+          }
+                }
+    }
+   
+    if(navigator.userAgent.indexOf('Safari') > -1 && window.DeviceOrientationEvent.requestPermission) {
+      window.DeviceOrientationEvent.requestPermission().then(state => {
+        this.permissonState = state;
+        this.askPermission = true;
+        this.showPermissionToast = false;
+        if(state == "granted") {
+        } else if (state == "denied") {
+          alert("请重启浏览器，如果使用指南针功能");
+        }
+      }).catch(err => {
+        console.log(err);
+        this.permissonState = "notPicked";
+        this.showPermissionToast = true;
+      }).finally(() => {
+        // this.getLocationData();
+        setInterval(()=>{
+          this.testData.data.my_location.lng+=0.001;
+          this.getDataCallback(this.testData);
+        }, 2000)
+      });
+    } else {
+      // this.getLocationData();
+      setInterval(()=>{
+        this.testData.data.my_location.lng+=0.001;
+        this.getDataCallback(this.testData);
+      }, 2000)
+    }
+   
+
+ 
   },
   created(){    
+    /**
+     * 
+     */
     window.getDataCallback = this.getDataCallback.bind(this);    
     
   },
@@ -69,6 +145,80 @@ export default {
   },
 
   methods: {
+    toMyLocation(){
+      this.loopMyLocation = true;
+      this.map.panTo(new T.LngLat(this.myLocation.lng, this.myLocation.lat))
+    },
+    touchStartEvent(){
+      document.querySelector('#permissionToast').style.backgroundColor = "red";
+    },
+    touchEndEvent(){
+      document.querySelector('#permissionToast').style.backgroundColor = "#aaa";
+    },
+    compassStartEvent1(){
+      this.showPermissionToast = false;
+      const _that = this;
+      if(window.DeviceOrientationEvent) {
+        if(navigator.userAgent.indexOf('Android') == -1) {
+          window.DeviceOrientationEvent.requestPermission().then(state => {
+            _that.askPermission = true;
+            _that.permissonState = state;
+            if(state === "granted"){//允许
+              console.error("用户允许",state);
+              _that.drawMyLocation();
+              }else if(state === "denied"){//拒绝
+              _that.pdefinedOverlay.hideCompass();
+                console.error("用户拒绝",state);
+                alert("请重启浏览器，如果使用指南针功能");
+            }else if(state === "prompt"){
+                console.error("用户干了啥",state)
+            }
+          })
+        }else {
+        window.addEventListener('deviceorientation', function (evt) {
+              let heading = compassHeading(evt.alpha, evt.beta,evt.gamma);
+               _that.arrowDiv.style.transform = "rotate("+heading+"deg)"
+              _that.compassDiv.style.transform = "rotate("+(360-heading)+"deg)"
+              function compassHeading(alpha, beta, gamma) {
+                // Convert degrees to radians
+                var alphaRad = alpha * (Math.PI / 180);
+                var betaRad = beta * (Math.PI / 180);
+                var gammaRad = gamma * (Math.PI / 180);
+
+                // Calculate equation components
+                var cA = Math.cos(alphaRad);
+                var sA = Math.sin(alphaRad);
+                var cB = Math.cos(betaRad);
+                var sB = Math.sin(betaRad);
+                var cG = Math.cos(gammaRad);
+                var sG = Math.sin(gammaRad);
+
+                // Calculate A, B, C rotation components
+                var rA = - cA * sG - sA * sB * cG;
+                var rB = - sA * sG + cA * sB * cG;
+                var rC = - cB * cG;
+
+                // Calculate compass heading
+                var compassHeading = Math.atan(rA / rB);
+
+                // Convert from half unit circle to whole unit circle
+                if(rB < 0) {
+                  compassHeading += Math.PI;
+                }else if(rA < 0) {
+                  compassHeading += 2 * Math.PI;
+                }
+
+                // Convert radians to degrees
+                compassHeading *= 180 / Math.PI;
+
+                return compassHeading;
+
+              }
+        })
+      }
+       
+      } 
+    },
     MapMoveend(e) {
       this.zoom = this.map.getZoom();
     },
@@ -92,6 +242,7 @@ export default {
       // this.$router.push({name:"Playback"})
     },
     lastDevice(){
+      this.loopMyLocation = false;
       if(this.currentIndex) {
         this.currentIndex--
       } else {
@@ -99,13 +250,14 @@ export default {
       };
       this.currentDevice = this.deviceList[this.currentIndex];
       this.getAddress()
-      this.map.centerAndZoom(new T.LngLat(this.currentDevice.lng, this.currentDevice.lat), this.zoom);
+      this.map.panTo(new T.LngLat(this.currentDevice.lng, this.currentDevice.lat));
       this.currentMarker = this.markers[this.currentIndex];
       this.infowindow.closeInfoWindow();
       this.infowindow = this.currentMarker.infowindow;
       this.map.addOverLay(this.infowindow);
     },
     nextDevice(){
+      this.loopMyLocation = false;
       if(this.currentIndex == (this.deviceList.length -1)) {
         this.currentIndex = 0;
       } else {
@@ -113,7 +265,7 @@ export default {
       };
       this.currentDevice = this.deviceList[this.currentIndex];
       this.getAddress();
-      this.map.centerAndZoom(new T.LngLat(this.currentDevice.lng, this.currentDevice.lat), this.zoom);
+      this.map.panTo(new T.LngLat(this.currentDevice.lng, this.currentDevice.lat));
       this.currentMarker = this.markers[this.currentIndex];
       this.infowindow.closeInfoWindow();
       this.infowindow = this.currentMarker.infowindow;
@@ -127,16 +279,202 @@ export default {
         callback: "getDataCallback"
         }));
     },
+    compassStartEvent(){
+      var definedOverlay = T.Overlay.extend({
+          initialize: function (lnglat, options) {
+              this.lnglat = lnglat;
+              this.setOptions(options);
+          },
+
+          onAdd: function (map) {
+            this.map = map;
+            // var div = this._div = document.createElement("div");
+            // div.style.position = "absolute";
+            // div.style.width = "150px";
+            // div.style.height = "150px";
+            // div.style.backgroundColor = "red"
+            // div.style.opacity = 0.1;
+            var compassDiv = this.compassDiv = document.createElement("div");
+            compassDiv.style.background = "url("+compassImg+ ") no-repeat";
+            compassDiv.style.backgroundSize = "100px 102px";
+            compassDiv.style.backgroundPosition = "center center";
+            compassDiv.style.position = "absolute";
+            compassDiv.style.top = "24px";
+            compassDiv.style.left = "24px";
+            compassDiv.style.width = "102px";
+            compassDiv.style.height = "102px";
+            compassDiv.innerHTML = "asdf22312q1esdfasdf"
+            // div.appendChild(compassDiv);
+
+            var arrow = this.arrow = document.createElement("div");
+            arrow.style.background = "url("+arrowImg+ ") no-repeat";
+            arrow.style.position = "absolute";
+            arrow.style.backgroundSize = "16px 42px";
+            arrow.style.width = "16px";
+            arrow.style.height = "42px";
+            arrow.style.top = "54px";
+            arrow.style.left = "67px";
+            arrow.style.overflow = "hidden";
+            // div.appendChild(arrow);
+            map.getPanes().overlayPane.appendChild(compassDiv);
+            this.update();
+          },
+
+          onRemove: function () {
+              var parent = this.div.parentNode;
+              if (parent) {
+                  parent.removeChild(this.div);
+                  this.map = null;
+                  this.div = null;
+              }
+          },
+
+          setLnglat: function (lnglat) {
+              this.lnglat = lnglat;
+              this.update();
+          },
+          getLnglat: function () {
+              return this.lnglat;
+          },
+          setPos: function (pos) {
+              this.lnglat = this.map.layerPointToLngLat(pos);
+              this.update();
+          },
+          /**
+           * 更新位置
+           */
+          update: function () {
+              var pos = this.map.lngLatToLayerPoint(this.lnglat);
+              this.compassDiv.style.top = ( pos.y - 36) + "px";
+              this.compassDiv.style.left = (pos.x - 11) + "px";
+
+          }
+      });
+      
+      var point = new T.LngLat(this.myLocation.lng, this.myLocation.lat);
+      var pdefinedOverlay = new definedOverlay(point, {});
+      this.map.addOverLay(pdefinedOverlay);
+    },
+    updateMylocation(){
+      let point = new T.LngLat(this.myLocation.lng,this.myLocation.lat);
+      this.pdefinedOverlay.setLnglatAndHeading(point, null);
+    },
+    drawMyLocation() {
+      console.log(this.permissonState);
+      const _that = this;
+      var definedOverlay = T.Overlay.extend({
+        initialize: function (lnglat,  options) {
+            this.lnglat = lnglat;
+            this.setOptions(options);
+            this.heading = 0;
+        },
+        onAdd: function (map) {
+          this.map = map;
+          var div = this._div = document.createElement("div");
+          div.style.position = "absolute";
+          div.style.width = "150px";
+          div.style.height = "150px";
+          var compassDiv = this.compassDiv = document.createElement("div");
+          compassDiv.style.background = "url("+compassImg+ ") no-repeat";
+          compassDiv.style.backgroundSize = "100px 102px";
+          compassDiv.style.backgroundPosition = "center center";
+          compassDiv.style.position = "absolute";
+          // compassDiv.style.display = "none";
+          compassDiv.style.top = "24px";
+          compassDiv.style.left = "24px";
+          compassDiv.style.width = "102px";
+          compassDiv.style.height = "102px";
+          div.appendChild(compassDiv);
+
+          var arrow = this.arrow = document.createElement("div");
+          arrow.style.background = "url("+arrowImg+ ") no-repeat";
+          arrow.style.position = "absolute";
+          arrow.style.backgroundSize = "16px 42px";
+          arrow.style.width = "16px";
+          arrow.style.height = "42px";
+          arrow.style.top = "54px";
+          arrow.style.left = "67px";
+          arrow.style.overflow = "hidden";
+          div.appendChild(arrow);
+          map.getPanes().overlayPane.appendChild(this._div);
+          this.update();
+      },
+
+      onRemove: function () {
+          var parent = this.div.parentNode;
+          if (parent) {
+              parent.removeChild(this.div);
+              this.map = null;
+              this.div = null;
+          }
+      },
+
+      setLnglatAndHeading: function (lnglat, heading) {
+        if(lnglat) {
+          this.lnglat = lnglat;
+          this.update();
+        }
+        if(heading) {
+          this.heading = heading;
+          this.updateHeading();
+        }
+      },
+      getLnglat: function () {
+          return this.lnglat;
+      },
+      setPos: function (pos) {
+          this.lnglat = this.map.layerPointToLngLat(pos);
+          this.update();
+      },
+      /**
+       * 更新位置
+       */
+      update: function () {
+        var pos = this.map.lngLatToLayerPoint(this.lnglat);
+        this._div.style.top = (pos.y -75) + "px";
+        this._div.style.left = (pos.x - 75) + "px";
+      },
+      updateHeading: function () {
+        this.arrow.style.transform = "rotate("+this.heading+"deg)"
+        this.compassDiv.style.transform = "rotate("+(360-this.heading)+"deg)"
+      },
+      hideCompass:function () {
+        this.compassDiv.style.display = "none";
+      },
+      showCompass:function () {
+        this.compassDiv.style.display = "block";
+      }        
+    });
+      //向地图上添加标注
+      if(this.permissonState == "granted") {
+        var point = new T.LngLat(this.myLocation.lng, this.myLocation.lat);
+        this.pdefinedOverlay = new definedOverlay(point, {});
+        console.log("_div_div")
+        console.log(this.pdefinedOverlay)
+        return
+        this.map.addOverLay(this.pdefinedOverlay);
+        this.pdefinedOverlay.showCompass();
+       //创建标注对象
+            var marker1 = new T.Marker(point);
+            //向地图上添加标注
+            this.map.addOverLay(marker1);
+        window.addEventListener('deviceorientation', function (evt) {
+          _that.pdefinedOverlay.setLnglatAndHeading(null, evt.webkitCompassHeading)
+        })
+      }
+    },
     getDataCallback(data){
-      let myData = JSON.parse(data)
-      if(myData.errcode == 0 && myData.data.length>0) {
-        this.deviceList = myData.data;
-        let currentIMEI = this.currentDevice.imei
+      // let myData = JSON.parse(data)
+      let myData = data;    
+      this.myLocation = myData.data.my_location;
+
+      if(myData.errcode == 0 && myData.data.imeis.length>0) {
+        this.deviceList = myData.data.imeis;
+        let currentIMEI = this.currentDevice.imei;
         if (currentIMEI == undefined && this.deviceList.length > 0) {
           this.currentDevice = this.deviceList[0];
           this.currentIndex = 0;
-        }
-        else {
+        } else {
           for (let index = 0; index < this.deviceList.length; index++) {
             const element = this.deviceList[index];
             if (currentIMEI == element.imei) {
@@ -149,10 +487,13 @@ export default {
         this.getAddress();
         if(this.firstLoad){
           console.log("firstload");
-          console.log(this.currentDevice);
           this.map.centerAndZoom(new T.LngLat(this.currentDevice.lng, this.currentDevice.lat), this.zoom);
           this.addMarkers();
           this.firstLoad = false;
+          // this.drawMyLocation()
+          if(this.permissonState == "granted") {
+            this.drawMyLocation();
+          }
         } else {
           this.updateMarkers()
         }
@@ -161,21 +502,28 @@ export default {
       }
     },
     updateMarkers(){
+      // this.markerOwnPosition.setLngLat(new T.LngLat(this.myLocation.lng,this.myLocation.lat));
+      if(this.pdefinedOverlay) {
+        this.updateMylocation();
+      }
       let deviceList = this.deviceList.slice(0);
       let obj = {};
       for (let j = 0; j < deviceList.length; j++) {
         obj[deviceList[j].imei] = deviceList[j];
       }
+      if(this.loopMyLocation) {
+        let myLngLat = new T.LngLat(this.myLocation.lng, this.myLocation.lat);
+        this.map.getBounds().contains(myLngLat) || this.map.panTo(myLngLat);
+      }
       for (let i = 0; i < this.markers.length; i++) {
         let marker = this.markers[i];
         let imei = marker.imei;
-        console.log(imei)
         let lngLat = marker.getLngLat();
         if(lngLat.lat != obj[imei].lat || lngLat.lng != obj[imei].lng) {
           let lngLat = new T.LngLat(obj[imei].lng, obj[imei].lat)
           marker.setLngLat(lngLat);
           marker.infowindow.setLngLat(lngLat);
-          if(marker.infowindow.isOpen()) {
+          if(marker.infowindow.isOpen() && !this.loopMyLocation) {
             this.map.getBounds().contains(lngLat) || this.map.panTo(lngLat);
           }
         }
@@ -187,7 +535,7 @@ export default {
       }
     },
     getAddress(){
-      const url = encodeURI("http://api.tianditu.gov.cn/geocoder?postStr={'lon': " +this.currentDevice.lng+ ",'lat':"+this.currentDevice.lat+",'ver':1}&type=geocode&tk=02c77be419309f75163b54b1d6109427")
+      const url = encodeURI("https://api.tianditu.gov.cn/geocoder?postStr={'lon': " +this.currentDevice.lng+ ",'lat':"+this.currentDevice.lat+",'ver':1}&type=geocode&tk=02c77be419309f75163b54b1d6109427")
       this.$axios({
         method: 'get',
         url})
@@ -200,6 +548,14 @@ export default {
     },
     addMarkers(){        
       const _that = this;
+      var iconOwnPosition = new T.Icon({
+          iconUrl: pointImg,
+          iconSize: new T.Point(19, 19),
+          iconAnchor: new T.Point(10, 10)
+      });
+      //向地图上添加自定义标注
+      // this.markerOwnPosition = new T.Marker(new T.LngLat(this.myLocation.lng, this.myLocation.lat), {icon: iconOwnPosition});
+      // this.map.addOverLay(this.markerOwnPosition);
       for (let i = 0; i < this.deviceList.length; i++) {
         let item = this.deviceList[i];
         var lnglat = new T.LngLat(item.lng, item.lat);
@@ -274,7 +630,19 @@ export default {
   padding: 20px;
   box-sizing: border-box;
   text-align: left;
-
+  .myLocationBtn {
+    width: 36px;
+    height: 36px;
+    border-radius: 4px;
+    box-shadow: 0 0 5px rgb(0 0 0 / 20%);
+    -webkit-box-shadow: 0 0 5px rgb(0 0 0 / 20%);
+    -moz-box-shadow: 0 0 5px rgba(0,0,0,.2);
+    background: #fff url("./../assets/map_icon.png") no-repeat 6px -245px;
+    background-size: 48px 329px;
+    position: absolute;
+    top: -50px;
+    right: 20px;
+  }
   .statusInfo {
     margin-top: 15px;
     .blue {
@@ -341,6 +709,20 @@ export default {
         transform: rotateX(180deg);
       }
     }
+  }
+  #permissionToast {
+    position: absolute;
+    left: 50%;
+    top: 30%;
+    transform: translate(-50%,-50%);
+    width: 70%;
+    height: 60px;
+    line-height: 60px;
+    background-color: #aaa;
+    opacity: 0.8;
+    border-radius: 50px;
+    z-index: 999;
+
   }
 
 </style>

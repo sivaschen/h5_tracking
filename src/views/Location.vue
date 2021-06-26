@@ -423,7 +423,11 @@ export default {
       this.markerOwnPosition.setLngLat(new T.LngLat(this.myLocation.lng,this.myLocation.lat));
       if(this.pdefinedOverlay) {
         this.updateMylocation();
-      }
+      };
+      let points = [];
+        points.push(new T.LngLat(this.myLocation.lng, this.myLocation.lat));
+        points.push(new T.LngLat(this.currentDevice.lng, this.currentDevice.lat));
+      this.myLocationLine.setLngLats(points)
       let deviceList = this.deviceList.slice(0);
       let obj = {};
       for (let j = 0; j < deviceList.length; j++) {
@@ -445,11 +449,8 @@ export default {
             this.map.getBounds().contains(lngLat) || this.map.panTo(lngLat);
           }
         }
-
-        let windowContent = marker.infowindow.getContent();
-        if(windowContent != obj[imei].name){
-          marker.infowindow.setContent(obj[imei].name);
-        }
+        let markerContent = obj[imei].name + " 距离：" + this.getMyLocationDistance(this.myLocation.lat,this.myLocation.lng,obj[imei].lat,obj[imei].lng) + "km";
+        marker.infowindow.setContent(markerContent);
       }
     },
     getAddress(){
@@ -464,6 +465,38 @@ export default {
         console.log(error);
       });
     },
+    getMyLocationDistance (lat1, lng1, lat2, lng2) {
+      const PI = Math.PI
+      const EARTH_RADIUS = 6378137.0
+      function getRad (d) {
+          return d * PI / 180.0
+      }
+      let f = getRad((lat1 + lat2) / 2)
+      let g = getRad((lat1 - lat2) / 2)
+      let l = getRad((lng1 - lng2) / 2)
+      let sg = Math.sin(g)
+      let sl = Math.sin(l)
+      let sf = Math.sin(f)
+
+      let s, c, w, r, d, h1, h2
+      let a = EARTH_RADIUS
+      let fl = 1 / 298.257
+
+      sg = sg * sg
+      sl = sl * sl
+      sf = sf * sf
+
+      s = sg * (1 - sl) + (1 - sf) * sl
+      c = (1 - sg) * (1 - sl) + sf * sl
+
+      w = Math.atan(Math.sqrt(s / c))
+      r = Math.sqrt(s * c) / w
+      d = 2 * w * a
+      h1 = (3 * r - 1) / 2 / c
+      h2 = (3 * r + 1) / 2 / s
+
+      return (d * (1 + fl * (h1 * sf * (1 - sg) - h2 * (1 - sf) * sg)) / 1000).toFixed(2)
+  },
     addMarkers(){        
       const _that = this;
       var iconOwnPosition = new T.Icon({
@@ -484,12 +517,15 @@ export default {
         infoWin.setOffset(point);
         infoWin.setLngLat(lnglat);
         //设置信息窗口要显示的内容
-        infoWin.setContent(String(item.name));
+        let markerContent = String(item.name)+" 距离："+this.getMyLocationDistance(this.myLocation.lat,this.myLocation.lng,this.currentDevice.lat,this.currentDevice.lng) + "km";
+        infoWin.setContent(markerContent);
         //向地图上添加信息窗口
-        
+       
          //创建图片对象
         var icon = new T.Icon({
           iconUrl: imgUrl,
+          iconSize: new T.Point(26, 26),
+          iconAnchor: new T.Point(13, 13)
         });
         //创建标注对象
         var marker = new T.Marker(lnglat, {icon:icon});
@@ -512,7 +548,14 @@ export default {
         });
         //向地图上添加标注
         this.map.addOverLay(marker);
-      }
+      };
+       //线
+        let points = [];
+        points.push(new T.LngLat(this.myLocation.lng, this.myLocation.lat));
+        points.push(new T.LngLat(this.currentDevice.lng, this.currentDevice.lat));
+            //创建线对象
+        this.myLocationLine = new T.Polyline(points);
+        this.map.addOverLay(this.myLocationLine);
     },
     openInfowidow({ target, extData }) {
       this.infowindow = {
